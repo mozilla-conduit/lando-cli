@@ -1,0 +1,33 @@
+[project]
+description =  "Lando Headless API Client"
+version = "0.0.2"
+authors = [
+    {name = "Mozilla", email = "conduit-team@mozilla.com"},
+]
+license-files = ["LICENSE"]
+readme = "README.md"
+dependencies = [
+    "click",
+    "requests",
+]
+name = "lando_cli"
+requires-python = ">=3.10"
+
+[project.optional-dependencies]
+code-quality = ["black", "ruff"]
+testing = [
+  "pytest",
+  "requests-mock"
+]
+
+[project.scripts]
+lando = "lando_cli.cli:cli"
+
+[build-system]
+requires = [
+    "setuptools>=64",
+    "setuptools_scm>=8",
+    "pip-tools",
+    "wheel",
+]
+build-backend = "setuptools.build_meta"
