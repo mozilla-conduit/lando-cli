@@ -10,6 +10,8 @@ from typing import Optional
 import click
 import requests
 
+__version__ = "0.0.3"
+
 DEFAULT_CONFIG_PATH = Path.home() / ".mozbuild" / "lando.toml"
 
 
@@ -367,6 +369,7 @@ def confirm_push() -> bool:
 
 
 @click.group()
+@click.version_option(__version__, "--version", "-v", prog_name="lando")
 def cli():
     """Lando headless CLI.
 
