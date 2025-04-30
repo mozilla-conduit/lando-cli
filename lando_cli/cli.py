@@ -309,10 +309,22 @@ def detect_merge_from_current_head(repo: Path) -> Optional[list[dict]]:
 
     parents = git_run(["rev-list", "--parents", "-n", "1", "HEAD"], repo).split()
 
-    if len(parents) != 3:
-        return None
+    if len(parents) == 3:
+        click.echo("Detected a new merge commit.")
+        merge_commit_sha, parent1, parent2 = parents
 
-    merge_commit_sha, parent1, parent2 = parents
+        # The second parent is the commit we merged into our
+        # destination branch.
+        target = parent2
+
+    elif len(parents) == 2:
+        click.echo("Detected a fast-forward merge.")
+        merge_commit_sha, parent = parents
+
+        # We fast-forwarded the branch, so the current HEAD is our target.
+        target = merge_commit_sha
+    else:
+        return None
 
     commit_message = get_commit_message(merge_commit_sha, repo)
 
@@ -320,7 +332,7 @@ def detect_merge_from_current_head(repo: Path) -> Optional[list[dict]]:
         {
             "action": "merge-onto",
             "commit_message": commit_message,
-            "target": parent2,
+            "target": target,
             "strategy": None,
         }
     ]
@@ -492,8 +504,8 @@ def push_merge(
 ):
     """Push merge actions to the specified repository.
 
-    Use `lando push-merge` to push a new clean merge commit to the specified Lando
-    repository. Running without any arguments will detect the merge target and commit
+    Use `lando push-merge` to push a clean merge to the specified Lando repository.
+    Running without any arguments will detect the merge target and commit
     message using the current HEAD.
 
     Passing `--target-commit` and `--commit-message` will attempt to create the merge
@@ -503,7 +515,7 @@ def push_merge(
 
     \b
         $ git switch main
-        $ git merge --no-ff origin/autoland
+        $ git merge origin/autoland
         $ lando push-merge --lando-repo firefox-main
     """
     current_branch = get_current_branch(local_repo)
@@ -526,10 +538,6 @@ def push_merge(
         actions = detect_merge_from_current_head(local_repo)
         if not actions:
             click.echo("Could not create a `merge-onto` action from current HEAD.")
-            click.secho(
-                "Hint: ensure your merge is not a fast-foward with `--no-ff`.",
-                italic=True,
-            )
             return 1
 
     display_merge_actions(actions, remote_branch_name)
