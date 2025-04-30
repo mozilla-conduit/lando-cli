@@ -373,6 +373,8 @@ def cli():
     Using this tool requires a config file at `~/.mozbuild/lando.toml` with the
     following format. Reach out to the Conduit team to request an API token.
 
+
+    \b
     ```
     [auth]
     api_token = "<TOKEN HERE>"
@@ -403,6 +405,7 @@ def push_commits(
     Example: to push local commits on your current branch to the `autoland`
     branch on the `firefox` repo:
 
+    \b
         $ lando push-commits --lando-repo firefox-autoland
     """
     push_branch = branch or get_current_branch(local_repo)
@@ -494,6 +497,8 @@ def push_merge(
     in Lando without detecting the change in your local repo.
 
     Example:
+
+    \b
         $ git switch main
         $ git merge --no-ff origin/autoland
         $ lando push-merge --lando-repo firefox-main
