@@ -368,7 +368,17 @@ def confirm_push() -> bool:
 
 @click.group()
 def cli():
-    """Lando headless CLI."""
+    """Lando headless CLI.
+
+    Using this tool requires a config file at `~/.mozbuild/lando.toml` with the
+    following format. Reach out to the Conduit team to request an API token.
+
+    ```
+    [auth]
+    api_token = "<TOKEN HERE>"
+    user_email = "user@mozilla.com"
+    ```
+    """
 
 
 @cli.command()
