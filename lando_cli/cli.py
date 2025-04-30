@@ -10,7 +10,7 @@ from typing import Optional
 import click
 import requests
 
-__version__ = "0.0.3"
+__version__ = "0.0.4"
 
 DEFAULT_CONFIG_PATH = Path.home() / ".mozbuild" / "lando.toml"
 
