@@ -1,7 +1,6 @@
 import os
 import subprocess
 import time
-import tomllib
 from dataclasses import dataclass
 from functools import wraps
 from pathlib import Path
@@ -9,6 +8,7 @@ from typing import Optional
 
 import click
 import requests
+import tomli
 
 __version__ = "0.0.5"
 
@@ -34,7 +34,7 @@ class Config:
 
         if config_path.is_file():
             with config_path.open("rb") as f:
-                config_data = tomllib.load(f)
+                config_data = tomli.load(f)
 
         auth = config_data.get("auth") or {}
 
