@@ -9,6 +9,7 @@ readme = "README.md"
 dependencies = [
     "click",
     "requests",
+    "tomli",
 ]
 name = "lando_cli"
 requires-python = ">=3.10"
