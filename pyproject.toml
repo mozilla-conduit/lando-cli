@@ -1,6 +1,6 @@
 [project]
 description =  "Lando Headless API Client"
-version = "0.0.5"
+version = "0.0.6"
 authors = [
     {name = "Mozilla", email = "conduit-team@mozilla.com"},
 ]

@@ -10,7 +10,7 @@ import click
 import requests
 import tomli
 
-__version__ = "0.0.5"
+__version__ = "0.0.6"
 
 DEFAULT_CONFIG_PATH = Path.home() / ".mozbuild" / "lando.toml"
 
