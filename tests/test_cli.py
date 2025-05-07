@@ -48,67 +48,76 @@ def git_local_repo(tmp_path: Path, git_remote_repo: Path):
     yield local_repo
 
 
-def test_config_loading(tmp_path: Path, monkeypatch):
+@pytest.mark.parametrize(
+    "config_content, expected, should_raise",
+    [
+        (
+            """
+            [auth]
+            api_token = "fake_token"
+            user_email = "test@example.com"
+            lando_url = "https://lando.test"
+            """,
+            {
+                "api_token": "fake_token",
+                "user_email": "test@example.com",
+                "lando_url": "https://lando.test",
+            },
+            False,
+        ),
+        (
+            """
+            [auth]
+            api_token = "fake_token"
+            user_email = "test@example.com"
+            """,
+            {
+                "api_token": "fake_token",
+                "user_email": "test@example.com",
+                "lando_url": "https://lando.moz.tools",
+            },
+            False,
+        ),
+        (
+            """
+            [auth]
+            user_email = "test@example.com"
+            """,
+            {},
+            True,
+        ),
+        (
+            """
+            [auth]
+            api_token = "fake_token"
+            """,
+            {},
+            True,
+        ),
+    ],
+)
+def test_config_loading_parametrized(
+    tmp_path: Path, monkeypatch, config_content, expected, should_raise
+):
     config_file = tmp_path / "lando.toml"
-    config_file.write_text(
-        """
-[auth]
-api_token = "fake_token"
-user_email = "test@example.com"
-lando_url = "https://lando.test"
-"""
-    )
+    config_file.write_text(config_content)
+
     monkeypatch.setenv("LANDO_CONFIG_PATH", str(config_file))
 
-    config = Config.load_config()
-    assert config.api_token == "fake_token"
-    assert config.user_email == "test@example.com"
-    assert config.lando_url == "https://lando.test"
-
-
-def test_config_loading_default_url(tmp_path: Path, monkeypatch):
-    config_file = tmp_path / "lando.toml"
-    config_file.write_text(
-        """
-[auth]
-api_token = "fake_token"
-user_email = "test@example.com"
-"""
-    )
-    monkeypatch.setenv("LANDO_CONFIG_PATH", str(config_file))
-
-    config = Config.load_config()
-    assert config.api_token == "fake_token"
-    assert config.user_email == "test@example.com"
-    assert config.lando_url == "https://lando.moz.tools"
-
-
-def test_config_loading_missing_token(tmp_path: Path, monkeypatch):
-    config_file = tmp_path / "lando.toml"
-    config_file.write_text(
-        """
-[auth]
-user_email = "test@example.com"
-"""
-    )
-    monkeypatch.setenv("LANDO_CONFIG_PATH", str(config_file))
-
-    with pytest.raises(KeyError):
-        Config.load_config()
-
-
-def test_config_loading_missing_email(tmp_path: Path, monkeypatch):
-    config_file = tmp_path / "lando.toml"
-    config_file.write_text(
-        """
-[auth]
-api_token = "fake_token"
-"""
-    )
-    monkeypatch.setenv("LANDO_CONFIG_PATH", str(config_file))
-
-    with pytest.raises(KeyError):
-        Config.load_config()
+    if should_raise:
+        with pytest.raises(KeyError):
+            Config.load_config()
+    else:
+        config = Config.load_config()
+        assert (
+            config.api_token == expected["api_token"]
+        ), "API token does not match value in config."
+        assert (
+            config.user_email == expected["user_email"]
+        ), "User email does not match value in config."
+        assert (
+            config.lando_url == expected["lando_url"]
+        ), "Lando URL does not match value in config."
 
 
 def test_get_current_branch(git_local_repo: Path):
