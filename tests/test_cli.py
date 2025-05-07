@@ -173,6 +173,7 @@ def test_detect_merge_from_current_head_true_merge(git_local_repo: Path):
     assert actions is not None
     assert len(actions) == 1
     assert actions[0]["commit_message"] == "Merge branch"
+    assert actions[0]["action"] == "merge-onto"
     assert actions[0]["target"] is not None
 
 
