@@ -30,7 +30,11 @@ def git_local_repo(tmp_path: Path, git_remote_repo: Path):
     local_repo = tmp_path / "local"
     local_repo.mkdir()
 
-    subprocess.run(["git", "init", local_repo.as_posix()], check=True, cwd=local_repo)
+    subprocess.run(
+        ["git", "clone", git_remote_repo.as_posix(), local_repo.as_posix()],
+        check=True,
+        cwd=local_repo,
+    )
     subprocess.run(["git", "config", "user.name", "Test User"], cwd=local_repo)
     subprocess.run(["git", "config", "user.email", "test@example.com"], cwd=local_repo)
 
@@ -39,10 +43,6 @@ def git_local_repo(tmp_path: Path, git_remote_repo: Path):
     subprocess.run(["git", "add", "."], cwd=local_repo)
     subprocess.run(["git", "commit", "-m", "Initial commit"], cwd=local_repo)
 
-    # Set up remote
-    subprocess.run(
-        ["git", "remote", "add", "origin", git_remote_repo.as_posix()], cwd=local_repo
-    )
     subprocess.run(["git", "push", "-u", "origin", "main:main"], cwd=local_repo)
 
     yield local_repo
