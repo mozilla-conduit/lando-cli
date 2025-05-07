@@ -12,6 +12,7 @@ from lando_cli.cli import (
     get_commit_message,
     detect_new_tags,
     detect_merge_from_current_head,
+    determine_base_sha_for_push,
     get_current_branch,
 )
 
@@ -132,7 +133,7 @@ def test_get_new_commits(git_local_repo: Path):
     subprocess.run(["git", "add", "."], cwd=git_local_repo)
     subprocess.run(["git", "commit", "-m", "New commit"], cwd=git_local_repo)
 
-    commits = get_new_commits("main", "main", git_local_repo)
+    commits = get_new_commits("main", "origin/main", git_local_repo)
     assert len(commits) == 1
 
     commit_message = get_commit_message(commits[0], git_local_repo)
@@ -144,7 +145,7 @@ def test_get_commit_patches(git_local_repo: Path):
     subprocess.run(["git", "add", "."], cwd=git_local_repo)
     subprocess.run(["git", "commit", "-m", "Patch commit"], cwd=git_local_repo)
 
-    commits = get_new_commits("main", "main", git_local_repo)
+    commits = get_new_commits("main", "origin/main", git_local_repo)
     patches = get_commit_patches(commits, git_local_repo)
 
     assert len(patches) == 1
@@ -201,3 +202,66 @@ def test_detect_merge_from_current_head_fast_forward(git_local_repo: Path):
     assert len(actions) == 1
     assert actions[0]["commit_message"] == "FF commit"
     assert actions[0]["target"] is not None
+
+
+def test_determine_base_sha_for_push_no_relbranch(git_local_repo: Path):
+    """Test determine_base_sha_for_push without a relbranch."""
+    base_sha, relbranch_specifier = determine_base_sha_for_push(
+        git_local_repo,
+        push_branch="main",
+        default_remote_branch="main",
+        relbranch=None,
+    )
+    assert base_sha == "origin/main"
+    assert relbranch_specifier is None
+
+
+def test_determine_base_sha_for_push_with_relbranch_existing(git_local_repo: Path):
+    """Test determine_base_sha_for_push with existing relbranch."""
+    # Create and push a relbranch
+    subprocess.run(
+        ["git", "switch", "-c", "FIREFOX_100_RELBRANCH"], cwd=git_local_repo
+    )
+    subprocess.run(
+        ["git", "push", "-u", "origin", "FIREFOX_100_RELBRANCH"], cwd=git_local_repo
+    )
+
+    base_sha, relbranch_specifier = determine_base_sha_for_push(
+        git_local_repo,
+        push_branch="FIREFOX_100_RELBRANCH",
+        default_remote_branch="main",
+        relbranch="FIREFOX_100_RELBRANCH",
+    )
+    assert base_sha == "origin/FIREFOX_100_RELBRANCH"
+    assert relbranch_specifier == {"branch_name": "FIREFOX_100_RELBRANCH"}
+
+
+def test_determine_base_sha_for_push_with_relbranch_missing(git_local_repo: Path):
+    """Test determine_base_sha_for_push with a missing relbranch."""
+    # Make sure we're on a different branch and make a commit
+    subprocess.run(["git", "switch", "-c", "feature"], cwd=git_local_repo)
+    (git_local_repo / "newfile.txt").write_text("feature work")
+    subprocess.run(["git", "add", "."], cwd=git_local_repo)
+    subprocess.run(["git", "commit", "-m", "Feature commit"], cwd=git_local_repo)
+
+    base_sha, relbranch_specifier = determine_base_sha_for_push(
+        git_local_repo,
+        push_branch="feature",
+        default_remote_branch="main",
+        relbranch="FIREFOX_101_RELBRANCH",
+    )
+
+    # Should be the result of `git merge-base feature origin/main`
+    merge_base = subprocess.run(
+        ["git", "merge-base", "feature", "origin/main"],
+        cwd=git_local_repo,
+        capture_output=True,
+        text=True,
+        check=True,
+    ).stdout.strip()
+
+    assert base_sha == merge_base
+    assert relbranch_specifier == {
+        "branch_name": "FIREFOX_101_RELBRANCH",
+        "commit_sha": merge_base,
+    }
