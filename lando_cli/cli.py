@@ -4,7 +4,7 @@ import time
 from dataclasses import dataclass
 from functools import wraps
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 
 import click
 import requests
@@ -106,9 +106,18 @@ def get_repo_info(config: Config, repo_name: str) -> dict:
     return result.json()
 
 
-def post_actions(config: Config, repo_name: str, actions: list[dict]) -> dict:
+def post_actions(
+    config: Config,
+    repo_name: str,
+    actions: list[dict],
+    relbranch: Optional[dict] = None,
+) -> dict:
     """Send actions to the headless API."""
-    actions_json = {"actions": actions}
+    actions_json: dict[str, Any] = {"actions": actions}
+
+    if relbranch:
+        actions_json["relbranch"] = relbranch
+
     result = api_request(config, "POST", f"repo/{repo_name}", json=actions_json)
 
     # `202` is a successful return.
@@ -164,16 +173,47 @@ def wait_for_job_completion(
     return result
 
 
-def submit_to_lando(config: Config, repo_name: str, actions: list[dict]):
+def display_relbranch_tracking_warning(branch_name: str):
+    """Display a warning about the new RelBranch."""
+    click.secho(
+        (
+            f"\nNote: The new RelBranch `{branch_name}` was created or updated, "
+            "but your local copy does not yet track it."
+        ),
+        fg="yellow",
+        bold=True,
+    )
+    click.echo(f"Fetch the latest changes on the relbranch:\n")
+    click.echo(f"  $ git fetch origin {branch_name}\n")
+    click.echo("Ensure you have the local branch checked out:\n")
+    click.echo(f"  $ git switch {branch_name}\n")
+    click.echo("Update your local branch to point to the official branch:\n")
+    click.echo(f"  $ git reset origin/{branch_name}\n")
+    click.echo("Set your local branch to track the official branch:\n")
+    click.echo(f"  $ git branch --set-upstream-to=origin/{branch_name} {branch_name}\n")
+    click.echo("This will give you a fresh checkout of the landed commits.\n")
+
+
+def submit_to_lando(
+    config: Config,
+    repo_name: str,
+    actions: list[dict],
+    relbranch: Optional[dict] = None,
+):
     """Submit automation actions to Lando."""
     click.echo("Sending actions:")
 
-    response = post_actions(config, repo_name, actions)
+    response = post_actions(config, repo_name, actions, relbranch=relbranch)
 
     job_id = response["job_id"]
     click.echo(f"Job {job_id} successfully submitted to Lando")
 
-    wait_for_job_completion(config, job_id)
+    result = wait_for_job_completion(config, job_id)
+
+    if result["status"] == "LANDED" and relbranch and relbranch.get("commit_sha"):
+        branch_name = relbranch["branch_name"]
+        display_relbranch_tracking_warning(branch_name)
+
     return
 
 
@@ -192,7 +232,7 @@ def git_run(git_args: list[str], repo: Path) -> str:
     return result.stdout.strip()
 
 
-def verify_remote_branch(remote_branch: str, repo: Path) -> bool:
+def verify_reference_exists_locally(remote_branch: str, repo: Path) -> bool:
     """Check if the remote branch exists locally."""
     try:
         git_run(["rev-parse", "--verify", remote_branch], repo)
@@ -205,21 +245,18 @@ def verify_remote_branch(remote_branch: str, repo: Path) -> bool:
 def get_remote_branch(branch: str, repo) -> str:
     """Get the remote branch for the given `branch`."""
     remote_branch_ref = f"origin/{branch}"
-    if not verify_remote_branch(remote_branch_ref, repo):
+    if not verify_reference_exists_locally(remote_branch_ref, repo):
         raise Exception(f"Could not find remote branch {remote_branch_ref}")
 
     return remote_branch_ref
 
 
-def get_new_commits(
-    local_branch: str, remote_branch_name: str, repo: Path
-) -> list[str]:
+def get_new_commits(local_branch: str, base_sha: str, repo: Path) -> list[str]:
     """Given a local branch, get the list of local commits."""
-    remote_branch = get_remote_branch(remote_branch_name, repo)
-    click.echo(f"Using remote branch {remote_branch}")
+    click.echo(f"Using {base_sha} as the base commit.")
 
     commits = git_run(
-        ["rev-list", f"{remote_branch}..{local_branch}", "--reverse"], repo
+        ["rev-list", f"{base_sha}..{local_branch}", "--reverse"], repo
     ).splitlines()
 
     return commits
@@ -248,8 +285,20 @@ def get_commit_message(commit_hash: str, repo: Path) -> str:
     return git_run(["log", "-1", "--pretty=%B", commit_hash], repo)
 
 
-def display_add_commit_actions(actions: list[dict], repo: Path):
+def display_add_commit_actions(
+    actions: list[dict], relbranch_specifier: dict | None, repo: Path
+):
     """Display summary of add-commit actions, showing tip commit SHA and message."""
+    click.echo("")
+
+    if relbranch_specifier:
+        branch_name = relbranch_specifier.get("branch_name")
+        commit_sha = relbranch_specifier.get("commit_sha")
+        if commit_sha:
+            click.echo(f"Creating new RelBranch {branch_name} on commit {commit_sha}.")
+        else:
+            click.echo(f"Pushing commits to existing RelBranch {branch_name}.")
+
     click.echo(f"About to push {len(actions)} commits.")
 
     # Use the last patch as the tip commit
@@ -338,6 +387,41 @@ def detect_merge_from_current_head(repo: Path) -> Optional[list[dict]]:
     ]
 
 
+def determine_base_sha_for_push(
+    local_repo: Path,
+    push_branch: str,
+    default_remote_branch: str,
+    relbranch: Optional[str],
+) -> tuple[str, Optional[dict[str, Any]]]:
+    """Return the base SHA to compare the local branch against for the push.
+
+    If no relbranch is passed, use the `origin/<branch>` for the default remote
+    from Lando.
+
+    If a relbranch is passed, look for a pre-existing remote relbranch to use
+    as the base. If an existing relbranch could not be found, use the first commit
+    leading to `HEAD` which exists on `origin/<branch>`.
+    """
+    if not relbranch:
+        base_sha_for_diff = get_remote_branch(default_remote_branch, local_repo)
+        return base_sha_for_diff, None
+
+    click.echo(f"Using relbranch {relbranch}")
+
+    relbranch_specifier = {"branch_name": relbranch}
+    remote_relbranch_name = f"origin/{relbranch}"
+
+    if verify_reference_exists_locally(remote_relbranch_name, local_repo):
+        click.echo(f"Found existing remote branch {remote_relbranch_name}")
+        return remote_relbranch_name, relbranch_specifier
+
+    base_sha_for_diff = git_run(
+        ["merge-base", push_branch, f"origin/{default_remote_branch}"], local_repo
+    )
+    relbranch_specifier["commit_sha"] = base_sha_for_diff
+    return base_sha_for_diff, relbranch_specifier
+
+
 def display_merge_actions(actions: list[dict], remote_branch_name: str):
     """Display merge actions nicely."""
     click.echo(f"About to push {len(actions)} merges:")
@@ -401,10 +485,15 @@ def cli():
 @cli.command()
 @local_repo_option()
 @click.option("--lando-repo", help="Lando repo to post changes to.")
-@click.option("--branch", help="Branch to push commits from.")
+@click.option("--branch", help="Local branch to push commits from.")
+@click.option("--relbranch", help="Push commits to the specified release branch.")
 @with_config
 def push_commits(
-    config: Config, local_repo: Path, lando_repo: str, branch: Optional[str] = None
+    config: Config,
+    local_repo: Path,
+    lando_repo: str,
+    branch: Optional[str] = None,
+    relbranch: Optional[str] = None,
 ):
     """Push new commits to the specified repository.
 
@@ -417,19 +506,29 @@ def push_commits(
     you will land to (ie `git rebase origin/autoland`) to ensure your push
     doesn't hit a merge conflict.
 
+    The `--relbranch` option is used to push changes to a named RelBranch.
+    `lando` will check the local Git repo for an existing RelBranch with that
+    name and push the changes to it, or create a new RelBranch if the branch
+    does not exist.
+
     Example: to push local commits on your current branch to the `autoland`
     branch on the `firefox` repo:
 
     \b
         $ lando push-commits --lando-repo firefox-autoland
+        $ lando push-commits --lando-repo firefox-beta --relbranch FIREFOX_64b_RELBRANCH
     """
-    push_branch = branch or get_current_branch(local_repo)
-    click.echo(f"Using local branch {push_branch}")
-
     repo_info = get_repo_info(config, lando_repo)
     remote_branch_name = repo_info["branch_name"]
 
-    commits = get_new_commits(push_branch, remote_branch_name, local_repo)
+    push_branch = branch or get_current_branch(local_repo)
+    click.echo(f"Using local branch {push_branch}")
+
+    base_sha_for_diff, relbranch_specifier = determine_base_sha_for_push(
+        local_repo, push_branch, remote_branch_name, relbranch
+    )
+
+    commits = get_new_commits(push_branch, base_sha_for_diff, local_repo)
     if not commits:
         click.echo("No new commits found!")
         return 1
@@ -437,13 +536,13 @@ def push_commits(
     patches = get_commit_patches(commits, local_repo)
     actions = create_add_commit_actions(patches)
 
-    display_add_commit_actions(actions, local_repo)
+    display_add_commit_actions(actions, relbranch_specifier, local_repo)
 
     if not confirm_push():
         click.echo("Push cancelled.")
         return 1
 
-    return submit_to_lando(config, lando_repo, actions)
+    return submit_to_lando(config, lando_repo, actions, relbranch=relbranch_specifier)
 
 
 @cli.command()
