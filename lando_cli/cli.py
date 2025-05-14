@@ -152,8 +152,9 @@ def wait_for_job_completion(
         elif status == "IN_PROGRESS":
             click.echo("Job is in progress.")
         elif status == "FAILED":
-            error_details = result.get("details", "No additional details provided.")
-            click.echo(f"Job {job_id} failed: {error_details}")
+            error_details = result.get("error", "No additional details provided.")
+            click.secho(f"Job {job_id} failed!", fg="red", bold=True)
+            click.echo(error_details)
             break
 
         elif status == "LANDED":
