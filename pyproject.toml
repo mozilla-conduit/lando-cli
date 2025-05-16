@@ -1,6 +1,5 @@
 [project]
 description =  "Lando Headless API Client"
-version = "0.0.7"
 authors = [
     {name = "Mozilla", email = "conduit-team@mozilla.com"},
 ]
@@ -14,12 +13,19 @@ dependencies = [
 name = "lando_cli"
 requires-python = ">=3.10"
 
+# Required for `setuptools_scm` when using only `pyproject.toml` (ie no `setup.cfg`).
+dynamic = ["version"]
+
 [project.optional-dependencies]
 code-quality = ["black", "ruff"]
 testing = [
   "pytest",
   "requests-mock"
 ]
+
+
+# Derive version number from version control.
+[tool.setuptools_scm]
 
 [project.scripts]
 lando = "lando_cli.cli:cli"
