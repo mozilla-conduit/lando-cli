@@ -21,7 +21,10 @@ from lando_cli.cli import (
 def git_remote_repo(tmp_path: Path):
     """Create a temporary bare remote Git repo."""
     remote_repo = tmp_path / "remote.git"
-    subprocess.run(["git", "init", "--bare", remote_repo.as_posix()], check=True)
+    subprocess.run(
+        ["git", "init", "--bare", remote_repo.as_posix(), "--initial-branch", "main"],
+        check=True,
+    )
     yield remote_repo
 
 
