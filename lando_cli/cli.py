@@ -488,6 +488,7 @@ def cli():
 @click.option("--lando-repo", help="Lando repo to post changes to.")
 @click.option("--branch", help="Local branch to push commits from.")
 @click.option("--relbranch", help="Push commits to the specified release branch.")
+@click.option("--yes", "skip_confirm", help="Skip confirmation dialog.", is_flag=True)
 @with_config
 def push_commits(
     config: Config,
@@ -495,6 +496,7 @@ def push_commits(
     lando_repo: str,
     branch: Optional[str] = None,
     relbranch: Optional[str] = None,
+    skip_confirm: Optional[bool] = False,
 ):
     """Push new commits to the specified repository.
 
@@ -539,7 +541,7 @@ def push_commits(
 
     display_add_commit_actions(actions, relbranch_specifier, local_repo)
 
-    if not confirm_push():
+    if not skip_confirm and not confirm_push():
         click.echo("Push cancelled.")
         return 1
 
