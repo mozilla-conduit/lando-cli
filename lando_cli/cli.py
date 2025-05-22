@@ -6,11 +6,21 @@ from functools import wraps
 from pathlib import Path
 from typing import Any, Optional
 
+from importlib.metadata import PackageNotFoundError, version
+
 import click
 import requests
 import tomli
 
-__version__ = "0.0.7"
+def get_version() -> str:
+    try:
+        return version("lando_cli")
+    except PackageNotFoundError:
+        # package is not installed
+        return "0.0.0"
+
+
+__version__ = get_version()
 
 DEFAULT_CONFIG_PATH = Path.home() / ".mozbuild" / "lando.toml"
 
