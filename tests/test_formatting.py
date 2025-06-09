@@ -13,7 +13,7 @@ def test_ruff():
     """Run ruff on the codebase.
 
     Use the project root as the directory to lint, and define appropriate lint
-    paths in the `ruff.toml` file.
+    paths in the `pyproject.toml` file.
     """
     subprocess.check_call(
         (
