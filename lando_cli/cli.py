@@ -12,6 +12,7 @@ import click
 import requests
 import tomli
 
+
 def get_version() -> str:
     try:
         return version("lando_cli")
@@ -194,7 +195,7 @@ def display_relbranch_tracking_warning(branch_name: str):
         fg="yellow",
         bold=True,
     )
-    click.echo(f"Fetch the latest changes on the relbranch:\n")
+    click.echo("Fetch the latest changes on the relbranch:\n")
     click.echo(f"  $ git fetch origin {branch_name}\n")
     click.echo("Ensure you have the local branch checked out:\n")
     click.echo(f"  $ git switch {branch_name}\n")

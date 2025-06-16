@@ -2,9 +2,6 @@ import pytest
 from pathlib import Path
 import subprocess
 
-import pytest
-from pathlib import Path
-import subprocess
 from lando_cli.cli import (
     Config,
     get_new_commits,
@@ -222,9 +219,7 @@ def test_determine_base_sha_for_push_no_relbranch(git_local_repo: Path):
 def test_determine_base_sha_for_push_with_relbranch_existing(git_local_repo: Path):
     """Test determine_base_sha_for_push with existing relbranch."""
     # Create and push a relbranch
-    subprocess.run(
-        ["git", "switch", "-c", "FIREFOX_100_RELBRANCH"], cwd=git_local_repo
-    )
+    subprocess.run(["git", "switch", "-c", "FIREFOX_100_RELBRANCH"], cwd=git_local_repo)
     subprocess.run(
         ["git", "push", "-u", "origin", "FIREFOX_100_RELBRANCH"], cwd=git_local_repo
     )
