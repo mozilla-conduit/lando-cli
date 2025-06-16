@@ -265,8 +265,6 @@ def get_remote_branch(branch: str, repo) -> str:
 
 def get_new_commits(local_branch: str, base_sha: str, repo: Path) -> list[str]:
     """Given a local branch, get the list of local commits."""
-    click.echo(f"Using {base_sha} as the base commit.")
-
     commits = git_run(
         ["rev-list", f"{base_sha}..{local_branch}", "--reverse"], repo
     ).splitlines()
@@ -500,6 +498,7 @@ def cli():
 @click.option("--branch", help="Local branch to push commits from.")
 @click.option("--relbranch", help="Push commits to the specified release branch.")
 @click.option("--yes", "skip_confirm", help="Skip confirmation dialog.", is_flag=True)
+@click.option("--base-commit", help="Use the specified commit as the base.")
 @with_config
 def push_commits(
     config: Config,
@@ -508,12 +507,15 @@ def push_commits(
     branch: Optional[str] = None,
     relbranch: Optional[str] = None,
     skip_confirm: Optional[bool] = False,
+    base_commit: Optional[str] = None,
 ):
     """Push new commits to the specified repository.
 
     Use `lando push-commits` to push new changes to the specified Lando repository.
     The currently checked out Git branch is used to find new commits, unless `--branch`
-    is passed to specify which local branch to use.
+    is passed to specify which local branch to use. The current commit of the remote
+    branch for the Lando repository is used as the base commit, unless the
+    `--base-commit` argument is passed to explicitly specify the base.
 
     The command assumes you are working off a recent copy of the remote branch.
     Make sure to `git fetch origin` and rebase your changes off of the branch
@@ -538,9 +540,24 @@ def push_commits(
     push_branch = branch or get_current_branch(local_repo)
     click.echo(f"Using local branch {push_branch}")
 
-    base_sha_for_diff, relbranch_specifier = determine_base_sha_for_push(
-        local_repo, push_branch, remote_branch_name, relbranch
-    )
+    if base_commit:
+        relbranch_specifier = {}
+
+        if not verify_reference_exists_locally(base_commit, local_repo):
+            click.secho(
+                f"Commit {base_commit} does not exist in the local repo.",
+                fg="red",
+                bold=True,
+            )
+            return 1
+
+        click.echo(f"Using {base_commit} as the base from `--base-commit`.")
+        base_sha_for_diff = base_commit
+    else:
+        base_sha_for_diff, relbranch_specifier = determine_base_sha_for_push(
+            local_repo, push_branch, remote_branch_name, relbranch
+        )
+        click.echo(f"Using {base_sha_for_diff} as the base commit.")
 
     commits = get_new_commits(push_branch, base_sha_for_diff, local_repo)
     if not commits:
