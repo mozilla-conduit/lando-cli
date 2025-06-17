@@ -43,7 +43,7 @@ Alternatively, you can supply the values as environment variables:
 
 Run `lando --help` for an overview of available commands.
 
-Run `lando command --help` for help with each command, including examples.
+Run `lando <COMMAND> --help` for help with each command, including examples.
 
 ### push-commits
 
