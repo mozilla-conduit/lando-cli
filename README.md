@@ -7,7 +7,7 @@ via the automation API.
 
 Please file bugs in Bugzilla under [`Conduit :: Lando`](https://bugzilla.mozilla.org/enter_bug.cgi?product=Conduit&component=Lando)
 
-Report issues or request enhancements in #conduit on Slack or Matrix.
+Report issues or request enhancements in #engineering-workflow on Slack or #conduit on Matrix.
 
 ## 🔧 Installation
 
