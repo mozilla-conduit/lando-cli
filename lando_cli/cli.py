@@ -236,7 +236,7 @@ def git_run(*args, **kwargs) -> str:
 
 
 def git_run_bytes(*args, **kwargs) -> bytes:
-    """Helper to run `git` with consistent arguments, and return raw bytes output"""
+    """Helper to run `git` with consistent arguments, and return raw bytes output."""
     kwargs["raw"] = True
     return _git_run(*args, **kwargs)
 
