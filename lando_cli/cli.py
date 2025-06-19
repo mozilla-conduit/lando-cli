@@ -310,7 +310,7 @@ def create_add_commit_actions(patches: list[bytes]) -> list[dict]:
     return [
         {
             "action": "add-commit-base64",
-            "content": base64.encodebytes(patch),
+            "content": base64.b64encode(patch),
             "patch_format": "git-format-patch",
         }
         for patch in patches
