@@ -7,6 +7,20 @@ import pytest
 from unittest import mock
 
 
+@pytest.fixture(autouse=True)
+def mock_config(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> cli.Config:
+    config_content = """
+            [auth]
+            api_token = "fake_token"
+            user_email = "test@example.com"
+            lando_url = "https://lando.test"
+            """
+    config_file = tmp_path / "lando.toml"
+    config_file.write_text(config_content)
+    monkeypatch.setenv("LANDO_CONFIG_PATH", str(config_file))
+    return cli.Config.load_config()
+
+
 @pytest.fixture
 def mock_get_repo_info(monkeypatch: pytest.MonkeyPatch) -> mock.Mock:
     mock_fixture = mock.MagicMock()
