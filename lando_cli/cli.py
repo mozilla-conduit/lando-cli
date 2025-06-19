@@ -313,7 +313,6 @@ def create_add_commit_actions(patches: list[bytes]) -> list[dict]:
             # We encode the raw bytes to BASE64, which we then need to decode to a str
             # for JSON encoding.
             "content": base64.b64encode(patch).decode("ascii"),
-            "patch_format": "git-format-patch",
         }
         for patch in patches
     ]
