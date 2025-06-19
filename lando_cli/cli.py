@@ -229,17 +229,30 @@ def submit_to_lando(
     return
 
 
-def git_run(git_args: list[str], repo: Path, raw: bool = False) -> str:
+def git_run(*args, **kwargs) -> str:
     """Helper to run `git` with consistent arguments."""
+    return _git_run(*args, **kwargs)
+
+
+def git_run_bytes(*args, **kwargs) -> bytes:
+    """Helper to run `git` with consistent arguments, and return raw bytes output"""
+    kwargs["raw"] = True
+    return _git_run(*args, **kwargs)
+
+
+def _git_run(git_args: list[str], repo: Path, raw: bool = False):
+    """Helper to run `git` with consistent arguments.
+
+    If raw is True, data is returned as bytes. Otherwise, a string with normalised
+    newlines is returned.
+    """
     command = ["git", *git_args]
     extra_run_args = {}
     if not raw:
-        extra_run_args.update(
-            {
-                "encoding": "utf-8",
-                "text": True,
-            }
-        )
+        extra_run_args = {
+            "encoding": "utf-8",
+            "text": True,
+        }
     result = subprocess.run(
         command,
         stdout=subprocess.PIPE,
@@ -283,8 +296,8 @@ def get_commit_patches(commits: list[str], repo: Path) -> list[bytes]:
     """Get `git format-patch` patches for each passed commit SHA."""
     patches = []
     for idx, commit in enumerate(commits):
-        patch = git_run(
-            ["format-patch", commit, "-1", "--always", "--stdout"], repo, raw=True
+        patch = git_run_bytes(
+            ["format-patch", commit, "-1", "--always", "--stdout"], repo
         )
         patches.append(patch)
 
