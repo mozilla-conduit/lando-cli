@@ -340,7 +340,7 @@ def display_add_commit_actions(
     click.echo(f"About to push {len(actions)} commits.")
 
     # Use the last patch as the tip commit
-    last_patch = actions[-1]["content"]
+    last_patch = base64.b64decode(actions[-1]["content"]).decode("utf-8")
     first_line = last_patch.splitlines()[0]
 
     if first_line.startswith("From "):
