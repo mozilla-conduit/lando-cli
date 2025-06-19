@@ -306,7 +306,7 @@ def get_commit_patches(commits: list[str], repo: Path) -> list[bytes]:
 
 
 def create_add_commit_actions(patches: list[bytes]) -> list[dict]:
-    """Given an ordered list of patches, create `add-commit` actions for each."""
+    """Given an ordered list of patches, create `add-commit-base64` actions for each."""
     return [
         {
             "action": "add-commit-base64",
