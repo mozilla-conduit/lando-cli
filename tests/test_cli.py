@@ -140,17 +140,19 @@ def test_get_new_commits(git_local_repo: Path):
     assert commit_message.strip() == "New commit"
 
 
-def test_get_commit_patches(git_local_repo: Path):
-    (git_local_repo / "file.txt").write_text("patch content")
+@pytest.mark.parametrize("patch_content", [b"patch content", b"patch\r\ncontent"])
+def test_get_commit_patches(git_local_repo: Path, patch_content: bytes):
+    commit_message = b"Patch commit"
+    (git_local_repo / "file.txt").write_bytes(patch_content)
     subprocess.run(["git", "add", "."], cwd=git_local_repo)
-    subprocess.run(["git", "commit", "-m", "Patch commit"], cwd=git_local_repo)
+    subprocess.run(["git", "commit", "-m", commit_message], cwd=git_local_repo)
 
     commits = get_new_commits("main", "origin/main", git_local_repo)
     patches = get_commit_patches(commits, git_local_repo)
 
     assert len(patches) == 1
-    assert "Patch commit" in patches[0]
-    assert "patch content" in patches[0]
+    assert patches[0].find(commit_message)
+    assert patches[0].find(patch_content)
 
 
 def test_detect_new_tags(git_local_repo: Path):

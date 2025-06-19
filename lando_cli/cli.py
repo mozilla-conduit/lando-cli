@@ -229,17 +229,24 @@ def submit_to_lando(
     return
 
 
-def git_run(git_args: list[str], repo: Path) -> str:
+def git_run(git_args: list[str], repo: Path, raw: bool = False) -> str:
     """Helper to run `git` with consistent arguments."""
     command = ["git", *git_args]
+    extra_run_args = {}
+    if not raw:
+        extra_run_args.update(
+            {
+                "encoding": "utf-8",
+                "text": True,
+            }
+        )
     result = subprocess.run(
         command,
-        encoding="utf-8",
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
-        text=True,
         check=True,
         cwd=repo,
+        **extra_run_args,
     )
     return result.stdout.strip()
 
@@ -272,17 +279,19 @@ def get_new_commits(local_branch: str, base_sha: str, repo: Path) -> list[str]:
     return commits
 
 
-def get_commit_patches(commits: list[str], repo: Path) -> list[str]:
+def get_commit_patches(commits: list[str], repo: Path) -> list[bytes]:
     """Get `git format-patch` patches for each passed commit SHA."""
     patches = []
     for idx, commit in enumerate(commits):
-        patch = git_run(["format-patch", commit, "-1", "--always", "--stdout"], repo)
+        patch = git_run(
+            ["format-patch", commit, "-1", "--always", "--stdout"], repo, raw=True
+        )
         patches.append(patch)
 
     return patches
 
 
-def create_add_commit_actions(patches: list[str]) -> list[dict]:
+def create_add_commit_actions(patches: list[bytes]) -> list[dict]:
     """Given an ordered list of patches, create `add-commit` actions for each."""
     return [
         {"action": "add-commit", "content": patch, "patch_format": "git-format-patch"}
