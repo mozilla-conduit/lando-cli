@@ -1,3 +1,4 @@
+import base64
 import os
 import subprocess
 import time
@@ -307,7 +308,11 @@ def get_commit_patches(commits: list[str], repo: Path) -> list[bytes]:
 def create_add_commit_actions(patches: list[bytes]) -> list[dict]:
     """Given an ordered list of patches, create `add-commit` actions for each."""
     return [
-        {"action": "add-commit", "content": patch, "patch_format": "git-format-patch"}
+        {
+            "action": "add-commit-base64",
+            "content": base64.encodebytes(patch),
+            "patch_format": "git-format-patch",
+        }
         for patch in patches
     ]
 
