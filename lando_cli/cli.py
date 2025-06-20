@@ -262,6 +262,9 @@ def _git_run(git_args: list[str], repo: Path, raw: bool = False):
         cwd=repo,
         **extra_run_args,
     )
+    if raw:
+        return result.stdout
+
     return result.stdout.strip()
 
 
