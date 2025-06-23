@@ -1,3 +1,4 @@
+from typing import Callable
 import pytest
 from pathlib import Path
 import subprocess
@@ -12,41 +13,6 @@ from lando_cli.cli import (
     determine_base_sha_for_push,
     get_current_branch,
 )
-
-
-@pytest.fixture
-def git_remote_repo(tmp_path: Path):
-    """Create a temporary bare remote Git repo."""
-    remote_repo = tmp_path / "remote.git"
-    subprocess.run(
-        ["git", "init", "--bare", remote_repo.as_posix(), "--initial-branch", "main"],
-        check=True,
-    )
-    yield remote_repo
-
-
-@pytest.fixture
-def git_local_repo(tmp_path: Path, git_remote_repo: Path):
-    """Create a temporary local Git repo with remote set up."""
-    local_repo = tmp_path / "local"
-    local_repo.mkdir()
-
-    subprocess.run(
-        ["git", "clone", git_remote_repo.as_posix(), local_repo.as_posix()],
-        check=True,
-        cwd=local_repo,
-    )
-    subprocess.run(["git", "config", "user.name", "Test User"], cwd=local_repo)
-    subprocess.run(["git", "config", "user.email", "test@example.com"], cwd=local_repo)
-
-    # Create an initial commit
-    (local_repo / "README.md").write_text("# Test Repo")
-    subprocess.run(["git", "add", "."], cwd=local_repo)
-    subprocess.run(["git", "commit", "-m", "Initial commit"], cwd=local_repo)
-
-    subprocess.run(["git", "push", "-u", "origin", "main:main"], cwd=local_repo)
-
-    yield local_repo
 
 
 @pytest.mark.parametrize(
@@ -127,11 +93,9 @@ def test_get_current_branch(git_local_repo: Path):
     assert branch == "testbranch"
 
 
-def test_get_new_commits(git_local_repo: Path):
+def test_get_new_commits(git_local_repo: Path, create_commit: Callable):
     # Create a new commit
-    (git_local_repo / "file.txt").write_text("content")
-    subprocess.run(["git", "add", "."], cwd=git_local_repo)
-    subprocess.run(["git", "commit", "-m", "New commit"], cwd=git_local_repo)
+    create_commit()
 
     commits = get_new_commits("main", "origin/main", git_local_repo)
     assert len(commits) == 1
@@ -140,17 +104,18 @@ def test_get_new_commits(git_local_repo: Path):
     assert commit_message.strip() == "New commit"
 
 
-def test_get_commit_patches(git_local_repo: Path):
-    (git_local_repo / "file.txt").write_text("patch content")
-    subprocess.run(["git", "add", "."], cwd=git_local_repo)
-    subprocess.run(["git", "commit", "-m", "Patch commit"], cwd=git_local_repo)
-
+@pytest.mark.parametrize("patch_content", [b"patch content", b"patch\r\ncontent"])
+def test_get_commit_patches(
+    git_local_repo: Path, create_commit: Callable, patch_content: bytes
+):
+    commit_message = "Patch commit"
+    create_commit(patch_content, commit_message)
     commits = get_new_commits("main", "origin/main", git_local_repo)
     patches = get_commit_patches(commits, git_local_repo)
 
     assert len(patches) == 1
-    assert "Patch commit" in patches[0]
-    assert "patch content" in patches[0]
+    assert patches[0].find(commit_message.encode("utf-8"))
+    assert patches[0].find(patch_content)
 
 
 def test_detect_new_tags(git_local_repo: Path):
@@ -166,12 +131,12 @@ def test_detect_new_tags(git_local_repo: Path):
     assert not new_tags_after_push
 
 
-def test_detect_merge_from_current_head_true_merge(git_local_repo: Path):
+def test_detect_merge_from_current_head_true_merge(
+    git_local_repo: Path, create_commit: Callable
+):
     # Create a branch and commit
     subprocess.run(["git", "switch", "-c", "branch"], cwd=git_local_repo)
-    (git_local_repo / "branch_file.txt").write_text("branch content")
-    subprocess.run(["git", "add", "."], cwd=git_local_repo)
-    subprocess.run(["git", "commit", "-m", "Branch commit"], cwd=git_local_repo)
+    create_commit("branch content", "Branch commit")
 
     # Switch to main and merge with no-ff
     subprocess.run(["git", "switch", "main"], cwd=git_local_repo)
@@ -187,11 +152,13 @@ def test_detect_merge_from_current_head_true_merge(git_local_repo: Path):
     assert actions[0]["target"] is not None
 
 
-def test_detect_merge_from_current_head_fast_forward(git_local_repo: Path):
+def test_detect_merge_from_current_head_fast_forward(
+    git_local_repo: Path, create_commit: Callable
+):
+    commit_message = "FF commit"
+
     subprocess.run(["git", "switch", "-c", "ff-branch"], cwd=git_local_repo)
-    (git_local_repo / "ff_file.txt").write_text("ff content")
-    subprocess.run(["git", "add", "."], cwd=git_local_repo)
-    subprocess.run(["git", "commit", "-m", "FF commit"], cwd=git_local_repo)
+    create_commit("ff content", commit_message, "ff_file.txt")
 
     # Switch to main and perform fast-forward merge
     subprocess.run(["git", "switch", "main"], cwd=git_local_repo)
@@ -200,7 +167,7 @@ def test_detect_merge_from_current_head_fast_forward(git_local_repo: Path):
     actions = detect_merge_from_current_head(git_local_repo)
     assert actions is not None
     assert len(actions) == 1
-    assert actions[0]["commit_message"] == "FF commit"
+    assert actions[0]["commit_message"] == commit_message
     assert actions[0]["target"] is not None
 
 
@@ -234,13 +201,13 @@ def test_determine_base_sha_for_push_with_relbranch_existing(git_local_repo: Pat
     assert relbranch_specifier == {"branch_name": "FIREFOX_100_RELBRANCH"}
 
 
-def test_determine_base_sha_for_push_with_relbranch_missing(git_local_repo: Path):
+def test_determine_base_sha_for_push_with_relbranch_missing(
+    git_local_repo: Path, create_commit: Callable
+):
     """Test determine_base_sha_for_push with a missing relbranch."""
     # Make sure we're on a different branch and make a commit
     subprocess.run(["git", "switch", "-c", "feature"], cwd=git_local_repo)
-    (git_local_repo / "newfile.txt").write_text("feature work")
-    subprocess.run(["git", "add", "."], cwd=git_local_repo)
-    subprocess.run(["git", "commit", "-m", "Feature commit"], cwd=git_local_repo)
+    create_commit("feature work", "Feature commit", "newfile.txt")
 
     base_sha, relbranch_specifier = determine_base_sha_for_push(
         git_local_repo,
