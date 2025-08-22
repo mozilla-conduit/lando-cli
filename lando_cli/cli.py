@@ -218,7 +218,9 @@ def submit_to_lando(
 
     response = post_actions(config, repo_name, actions, relbranch=relbranch)
 
-    job_id = response["job_id"]
+    # In bug 1983208, lando switched for returning job_id to just id.
+    # For now, we handle both cases.
+    job_id = response.get("id", response.get("job_id"))
     click.echo(f"Job {job_id} successfully submitted to Lando")
 
     result = wait_for_job_completion(config, job_id)
