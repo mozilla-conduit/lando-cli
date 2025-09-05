@@ -152,7 +152,11 @@ def wait_for_job_completion(
 ) -> dict:
     """Wait for a job to complete."""
     click.echo("Waiting for job completion, you may exit at any time.")
-    click.echo(f"Note: run `lando check-job {job_id}` to check the status later.")
+    click.echo(
+        f"Note: run `lando check-job {job_id}`, "
+        + f"or visit {config.lando_url}/api/jobs/{job_id}, "
+        + "to check the status later."
+    )
 
     while True:
         result = get_job_status(config, job_id)
