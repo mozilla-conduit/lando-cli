@@ -167,6 +167,8 @@ def wait_for_job_completion(
             click.echo("Job has been submitted and will be started soon.")
         elif status == "IN_PROGRESS":
             click.echo("Job is in progress.")
+        elif status == "DEFERRED":
+            click.echo("Job was deferred and will be retried.")
         elif status == "FAILED":
             error_details = result.get("error", "No additional details provided.")
             click.secho(f"Job {job_id} failed!", fg="red", bold=True)
