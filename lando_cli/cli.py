@@ -148,7 +148,10 @@ def post_actions(
 
 
 def wait_for_job_completion(
-    config: Config, job_id: int, poll_interval: int = 3
+    config: Config,
+    job_id: int,
+    poll_interval: int = 3,
+    previous_status: str | None = None,
 ) -> dict:
     """Wait for a job to complete."""
     click.echo("Waiting for job completion, you may exit at any time.")
@@ -168,7 +171,14 @@ def wait_for_job_completion(
         elif status == "IN_PROGRESS":
             click.echo("Job is in progress.")
         elif status == "DEFERRED":
-            click.echo("Job was deferred and will be retried.")
+            if previous_status != "DEFERRED":
+                error_details = result.get("error", "No additional details provided.")
+                click.secho(
+                    f"Job {job_id} was deferred, and will be retried.", fg="yellow"
+                )
+                click.echo(error_details)
+            else:
+                click.echo("Job was deferred and will be retried.")
         elif status == "FAILED":
             error_details = result.get("error", "No additional details provided.")
             click.secho(f"Job {job_id} failed!", fg="red", bold=True)
@@ -730,4 +740,5 @@ def check_job(config: Config, job_id: int):
     Example:
         $ lando check-job 1
     """
-    wait_for_job_completion(config, job_id)
+    status = None
+    status = wait_for_job_completion(config, job_id, status)
