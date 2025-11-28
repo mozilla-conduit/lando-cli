@@ -37,6 +37,7 @@ class Config:
     api_token: str
     lando_url: str
     user_email: str
+    verify_tls: bool = True
 
     @classmethod
     def load_config(cls) -> "Config":
@@ -55,8 +56,9 @@ class Config:
         lando_url = os.getenv(
             "LANDO_URL", auth.get("lando_url", "https://lando.moz.tools")
         )
+        verify_tls = auth["verify_tls"]
 
-        return Config(api_token=api_token, user_email=user_email, lando_url=lando_url)
+        return Config(api_token=api_token, user_email=user_email, lando_url=lando_url, verify_tls=verify_tls)
 
 
 def with_config(func):
@@ -94,7 +96,9 @@ def api_request(
     if headers:
         common_headers.update(headers)
 
-    return requests.request(method, url, *args, headers=common_headers, **kwargs)
+    return requests.request(
+        method, url, *args, headers=common_headers, verify=config.verify_tls, **kwargs
+    )
 
 
 def get_job_status(config: Config, job_id: int) -> dict:
