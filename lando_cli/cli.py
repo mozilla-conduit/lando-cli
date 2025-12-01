@@ -56,9 +56,14 @@ class Config:
         lando_url = os.getenv(
             "LANDO_URL", auth.get("lando_url", "https://lando.moz.tools")
         )
-        verify_tls = auth["verify_tls"]
+        verify_tls = auth.get("verify_tls", True)
 
-        return Config(api_token=api_token, user_email=user_email, lando_url=lando_url, verify_tls=verify_tls)
+        return Config(
+            api_token=api_token,
+            user_email=user_email,
+            lando_url=lando_url,
+            verify_tls=verify_tls,
+        )
 
 
 def with_config(func):
