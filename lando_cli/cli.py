@@ -596,6 +596,9 @@ def push_commits(
         $ lando push-commits --lando-repo firefox-beta --relbranch FIREFOX_64b_RELBRANCH
     """
     repo_info = get_repo_info(config, lando_repo)
+    click.echo(
+        f"Working on Lando repo {lando_repo} ({repo_info['repo_url']} at {repo_info['branch_name']})"
+    )
     remote_branch_name = repo_info["branch_name"]
 
     push_branch = branch or get_current_branch(local_repo)
@@ -654,13 +657,16 @@ def push_tag(
 
     Use `lando push-tag` to push new tags to the specified Lando repository.
 
-    If no arguments are passed, `lando push-commits` will find any local tags
+    If no arguments are passed, `lando push-tags` will find any local tags
     which are not present on the remote and prepare them for pushing to the
     server.
 
     If `--tag-name` and `--tag-sha` are used, a new tag with the given name
     will be created on the specified commit SHA.
     """
+    repo_info = get_repo_info(config, lando_repo)
+    click.echo(f"Working on Lando repo {lando_repo} ({repo_info['repo_url']})")
+
     if tag_name and tag_sha:
         actions = [{"action": "tag", "name": tag_name, "target": tag_sha}]
     else:
@@ -710,9 +716,12 @@ def push_merge(
         $ lando push-merge --lando-repo firefox-main
     """
     current_branch = get_current_branch(local_repo)
-    click.echo(f"Using branch {current_branch}")
+    click.echo(f"Using local branch {current_branch}")
 
     repo_info = get_repo_info(config, lando_repo)
+    click.echo(
+        f"Working on Lando repo {lando_repo} ({repo_info['repo_url']} at {repo_info['branch_name']})"
+    )
     remote_branch_name = repo_info["branch_name"]
 
     if target_commit and commit_message:
