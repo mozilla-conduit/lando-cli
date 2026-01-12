@@ -24,7 +24,11 @@ def mock_config(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> cli.Config:
 @pytest.fixture
 def mock_get_repo_info(monkeypatch: pytest.MonkeyPatch) -> mock.Mock:
     mock_fixture = mock.MagicMock()
-    mock_fixture.return_value = {"branch_name": "main", "repo_name": "mock-repo"}
+    mock_fixture.return_value = {
+        "repo_url": "https://example.net/mock-repo",
+        "branch_name": "main",
+        "repo_name": "mock-repo",
+    }
     monkeypatch.setattr(cli, "get_repo_info", mock_fixture)
     return mock_fixture
 
