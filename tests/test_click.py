@@ -52,7 +52,7 @@ def test_push_commits(
     create_commit: Callable,
     mock_get_repo_info: mock.Mock,
     mock_submit_to_lando: mock.Mock,
-    commit_data: str,
+    commit_data: bytes | str,
 ):
     commit_message = "New commit to push"
 
