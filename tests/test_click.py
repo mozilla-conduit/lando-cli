@@ -40,17 +40,25 @@ def mock_submit_to_lando(monkeypatch: pytest.MonkeyPatch) -> mock.Mock:
     return mock_fixture
 
 
+@pytest.mark.parametrize(
+    "commit_data",
+    (
+        "just a string",
+        b"-\x1f\x8b\n",  # GZip magic bytes
+    ),
+)
 def test_push_commits(
     git_local_repo: Path,
     create_commit: Callable,
     mock_get_repo_info: mock.Mock,
     mock_submit_to_lando: mock.Mock,
+    commit_data: bytes | str,
 ):
     commit_message = "New commit to push"
 
     runner = CliRunner()
     with runner.isolated_filesystem(git_local_repo):
-        create_commit(commit_message=commit_message)
+        create_commit(commit_data, commit_message=commit_message)
         result = runner.invoke(cli.push_commits, ["--yes"])
 
     assert result.exit_code == 0
