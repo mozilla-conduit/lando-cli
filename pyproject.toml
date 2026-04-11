@@ -16,13 +16,12 @@ requires-python = ">=3.10"
 # Required for `setuptools_scm` when using only `pyproject.toml` (ie no `setup.cfg`).
 dynamic = ["version"]
 
-[project.optional-dependencies]
+[dependency-groups]
 code-quality = ["black", "ruff"]
 testing = [
   "pytest",
-  "requests-mock"
+  "requests-mock",
 ]
-
 
 # Derive version number from version control.
 [tool.setuptools_scm]
@@ -34,7 +33,5 @@ lando = "lando_cli.cli:cli"
 requires = [
     "setuptools>=64",
     "setuptools_scm>=8",
-    "pip-tools",
-    "wheel",
 ]
 build-backend = "setuptools.build_meta"

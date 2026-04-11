@@ -17,16 +17,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ matrix.python-version }}
+        run: uv python install ${{ matrix.python-version }}
 
       - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install .[code-quality,testing]
+        run: uv sync --group code-quality --group testing --python ${{ matrix.python-version }}
 
       - name: Run tests
-        run: pytest
-
+        run: uv run --group testing pytest
