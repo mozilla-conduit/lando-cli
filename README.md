@@ -11,16 +11,39 @@ Report issues or request enhancements in #engineering-workflow on Slack or #cond
 
 ## 🔧 Installation
 
-Install the CLI tool from PyPI, using `pip` or `pipx`.
+Install the CLI tool from PyPI using `uv`, `pip`, or `pipx`.
 
 ```sh
-pipx install lando_cli
+uv tool install lando_cli
 ```
 
 Confirm the tool is installed locally.
 
 ```sh
 lando --version
+```
+
+## 🛠️ Development
+
+This project uses [uv](https://docs.astral.sh/uv/) for package and virtual environment management.
+
+Install all dependencies, including dev and test groups:
+
+```sh
+uv sync --group code-quality --group testing
+```
+
+Run the test suite:
+
+```sh
+uv run pytest
+```
+
+Run the linter and formatter:
+
+```sh
+uv run ruff check .
+uv run black --check .
 ```
 
 ## 🔐 Configuration
