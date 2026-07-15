@@ -419,7 +419,9 @@ def display_tag_actions(actions: list[dict]):
     click.echo("")
 
 
-def detect_merge_from_current_head(repo: Path) -> Optional[list[dict]]:
+def detect_merge_from_current_head(
+    repo: Path, merge_strategy: str | None = None
+) -> Optional[list[dict]]:
     """Detect if HEAD is a merge commit and return an action for the merge.
 
     If HEAD is a merge commit (a commit with two parents), return an action
@@ -455,7 +457,7 @@ def detect_merge_from_current_head(repo: Path) -> Optional[list[dict]]:
             "action": "merge-onto",
             "commit_message": commit_message,
             "target": target,
-            "strategy": None,
+            "strategy": merge_strategy,
         }
     ]
 
@@ -740,7 +742,7 @@ def push_merge(
             }
         ]
     else:
-        actions = detect_merge_from_current_head(local_repo)
+        actions = detect_merge_from_current_head(local_repo, merge_strategy)
         if not actions:
             click.echo("Could not create a `merge-onto` action from current HEAD.")
             return 1
