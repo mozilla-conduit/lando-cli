@@ -147,7 +147,14 @@ def post_actions(
 
         try:
             response_json = result.json()
-            click.echo(response_json["details"])
+            # Bug 2059648: check the desired property,
+            # but fall back to the deprecated one.
+            click.echo(
+                response_json.get(
+                    "detail",
+                    response_json.get("details", "(missing detail in error response)"),
+                )
+            )
         except Exception:
             click.echo("Unknown error.")
 

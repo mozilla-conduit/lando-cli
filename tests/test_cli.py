@@ -1,6 +1,8 @@
 from typing import Callable
 import pytest
 from pathlib import Path
+import requests
+import requests_mock
 import subprocess
 
 from lando_cli.cli import (
@@ -12,7 +14,13 @@ from lando_cli.cli import (
     detect_merge_from_current_head,
     determine_base_sha_for_push,
     get_current_branch,
+    post_actions,
 )
+
+
+@pytest.fixture
+def config() -> Config:
+    return Config("token", "https://lando.example.net", "user@example.net", True)
 
 
 @pytest.mark.parametrize(
@@ -230,3 +238,25 @@ def test_determine_base_sha_for_push_with_relbranch_missing(
         "branch_name": "FIREFOX_101_RELBRANCH",
         "commit_sha": merge_base,
     }
+
+
+@pytest.mark.parametrize("error_key", ("detail", "details", None))
+def test_post_actions_error_details(
+    config: Config, capsys: pytest.CaptureFixture, error_key: str | None
+):
+    with requests_mock.Mocker() as m:
+        repo_name = "test-repo"
+        m.post(
+            f"{config.lando_url}/api/repo/{repo_name}",
+            json={error_key: "Some error"},
+            status_code=400,
+        )
+        with pytest.raises(requests.HTTPError):
+            post_actions(config, repo_name, [{}])
+
+    outerr = capsys.readouterr()
+
+    if error_key:
+        assert "Some error" in outerr.out
+    else:
+        assert "(missing detail in error response)" in outerr.out
