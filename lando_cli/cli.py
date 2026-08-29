@@ -426,7 +426,9 @@ def display_tag_actions(actions: list[dict]):
     click.echo("")
 
 
-def detect_merge_from_current_head(repo: Path) -> Optional[list[dict]]:
+def detect_merge_from_current_head(
+    repo: Path, merge_strategy: str | None = None
+) -> Optional[list[dict]]:
     """Detect if HEAD is a merge commit and return an action for the merge.
 
     If HEAD is a merge commit (a commit with two parents), return an action
@@ -462,7 +464,7 @@ def detect_merge_from_current_head(repo: Path) -> Optional[list[dict]]:
             "action": "merge-onto",
             "commit_message": commit_message,
             "target": target,
-            "strategy": None,
+            "strategy": merge_strategy,
         }
     ]
 
@@ -700,6 +702,8 @@ def push_tag(
 @click.option("--lando-repo", help="Lando repo to post changes to.")
 @click.option("--target-commit", help="Target commit to merge into.")
 @click.option("--commit-message", help="Commit message for the merge commit.")
+# XXX: better validation and default
+@click.option("--merge-strategy", help="Merge strategy: ours (default) or theirs")
 @with_config
 def push_merge(
     config: Config,
@@ -707,6 +711,7 @@ def push_merge(
     lando_repo: str,
     target_commit: str,
     commit_message: str,
+    merge_strategy: str | None = None,
 ):
     """Push merge actions to the specified repository.
 
@@ -740,11 +745,11 @@ def push_merge(
                 "action": "merge-onto",
                 "commit_message": commit_message,
                 "target": target_commit,
-                "strategy": None,
+                "strategy": merge_strategy,
             }
         ]
     else:
-        actions = detect_merge_from_current_head(local_repo)
+        actions = detect_merge_from_current_head(local_repo, merge_strategy)
         if not actions:
             click.echo("Could not create a `merge-onto` action from current HEAD.")
             return 1
