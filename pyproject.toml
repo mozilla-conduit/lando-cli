@@ -28,6 +28,7 @@ testing = [
 
 [project.scripts]
 lando = "lando_cli.cli:cli"
+lando-cli = "lando_cli.cli:cli"
 
 [build-system]
 requires = [
